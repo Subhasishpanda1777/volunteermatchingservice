@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Volunteer Matching</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .application-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .application-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .status-pending { background: #ffd700; }
+        .status-approved { background: #90EE90; }
+        .status-rejected { background: #ffcccb; }
+        .action-buttons {
+            margin-top: 15px;
+        }
+        .action-buttons button {
+            margin-right: 10px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .approve-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        .reject-btn {
+            background: #f44336;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <h1>Admin Panel - Applications</h1>
+        <div id="applicationsList">
+            <div class="loading">Loading applications...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin + '/api';  // Use relative URL
+
+        async function loadApplications() {
+            try {
+                const response = await fetch(`${API_URL}/admin/applications`);
+                const applications = await response.json();
+                displayApplications(applications);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('applicationsList').innerHTML = 
+                    '<div class="error">Error loading applications</div>';
+            }
+        }
+
+        async function updateApplicationStatus(applicationId, newStatus) {
+            try {
+                const response = await fetch(`${API_URL}/admin/applications/${applicationId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.ok) {
+                    loadApplications(); // Refresh the list
+                } else {
+                    const error = await response.json();
+                    alert(error.error || 'Failed to update application status');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating application status');
+            }
+        }
+
+        function displayApplications(applications) {
+            const container = document.getElementById('applicationsList');
+            container.innerHTML = '';
+
+            if (applications.length === 0) {
+                container.innerHTML = '<div class="no-results">No applications found</div>';
+                return;
+            }
+
+            applications.forEach(app => {
+                const card = document.createElement('div');
+                card.className = 'application-card';
+                
+                const statusClass = `status-${app.status.toLowerCase()}`;
+                
+                card.innerHTML = `
+                    <h3>${app.opportunity}</h3>
+                    <p><strong>Applicant:</strong> ${app.user}</p>
+                    <p><strong>Applied:</strong> ${new Date(app.created_at).toLocaleDateString()}</p>
+                    <p><strong>Status:</strong> <span class="status-badge ${statusClass}">${app.status}</span></p>
+                    ${app.notes ? `<p><strong>Notes:</strong> ${app.notes}</p>` : ''}
+                    <div class="action-buttons">
+                        ${app.status === 'pending' ? `
+                            <button class="approve-btn" onclick="updateApplicationStatus('${app.id}', 'approved')">Approve</button>
+                            <button class="reject-btn" onclick="updateApplicationStatus('${app.id}', 'rejected')">Reject</button>
+                        ` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Load applications when page loads
+        window.addEventListener('load', loadApplications);
+    </script>
+</body>
+</html>
